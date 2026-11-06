@@ -23,6 +23,7 @@ Writes to OUT (a new folder; the run refuses to write into a folder that already
                           sanity-check results, counts
 
     python3 hash_distances.py --in ~/DVA_copies --out ~/DVA_hashes
+    python3 hash_distances.py --in ~/DVA_copies --out ~/DVA_hashes --expect-scipy 1.18.1   # tie to a recorded SciPy
 """
 import argparse
 import csv
@@ -52,8 +53,8 @@ WHASH_REMOVE_MAX_HAAR_LL = True  # ImageHash 4.3.2 default for the section-6 cal
 HASHES = ("ahash", "dhash", "phash", "whash")
 N_BITS = HASH_SIZE * HASH_SIZE
 
-# Versions pinned by the protocol (section 8). SciPy is required by ImageHash's pHash but is not pinned
-# by the protocol: its version is recorded in run_metadata.json.
+# Versions pinned by the protocol (section 8). SciPy (required by ImageHash's pHash) is not pinned here: it is
+# detected at run time and recorded; --expect-scipy ties a run to the version an earlier run recorded.
 PINNED = {"ImageHash": "4.3.2", "PyWavelets": "1.8.0", "numpy": "2.5.3", "pillow": "12.3.0"}
 RECORDED = ("ImageHash", "PyWavelets", "numpy", "pillow", "scipy")
 
@@ -131,6 +132,18 @@ def reference_pairs(image_ids, seed):
 def check_versions(found, pinned=PINNED):
     """Return the list of (package, pinned, found) that differ from the protocol pins."""
     return [(k, v, found.get(k)) for k, v in pinned.items() if found.get(k) != v]
+
+
+def check_scipy(found, expected=None):
+    """SciPy is detected at run time, never assumed. Returns a record for run_metadata.json.
+
+    The hash computation itself never changes with the SciPy version: the same section-6 calls run in every
+    environment. What adapts is the check: with no --expect-scipy the detected version is accepted and
+    recorded (pilot, first run on a machine); with --expect-scipy the run stops if the detected version
+    differs, so later runs are tied to the version the earlier run recorded."""
+    if found is None:
+        raise SystemExit("Error: SciPy is not installed; ImageHash's pHash needs it (pip install scipy).")
+    return dict(detected=found, expected=expected, matches=None if expected is None else found == expected)
 
 
 def package_versions():
@@ -282,6 +295,9 @@ def main(argv=None):
     ap.add_argument("--out", dest="out_dir", required=True, help="new output folder for hashes and distances")
     ap.add_argument("--workers", type=int, default=os.cpu_count(), help="parallel processes (default: all cores; "
                                                                          "the output does not depend on it)")
+    ap.add_argument("--expect-scipy", metavar="VERSION",
+                    help="stop unless the installed SciPy is exactly this version (default: accept and record "
+                         "the version detected at run time)")
     ap.add_argument("--allow-unpinned", action="store_true",
                     help="run even if package versions differ from the protocol pins (recorded in run_metadata.json)")
     a = ap.parse_args(argv)
@@ -294,6 +310,13 @@ def main(argv=None):
         raise SystemExit("Error: package versions differ from the protocol pins: "
                          + "; ".join(f"{k} {f} (pinned {v})" for k, v, f in diffs)
                          + ". Use the reference environment, or --allow-unpinned for a test run.")
+    scipy_rec = check_scipy(env["packages"].get("scipy"), a.expect_scipy)
+    if scipy_rec["matches"] is False and not a.allow_unpinned:
+        raise SystemExit(f"Error: SciPy {scipy_rec['detected']} is installed but --expect-scipy "
+                         f"{a.expect_scipy} was given.")
+    print("Versions: " + ", ".join(f"{k} {v}" for k, v in env["packages"].items())
+          + f"; Python {platform.python_version()} on {platform.machine()}"
+          + ("" if a.expect_scipy else "  (SciPy detected at run time and recorded)"))
     if out.exists() and any(out.iterdir()):
         raise SystemExit(f"Error: {out} is not empty. Use a new output folder.")
     if out == in_dir or in_dir in out.parents:
@@ -379,6 +402,7 @@ def main(argv=None):
         created=time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         script_sha256=sha256_file(Path(__file__)),
         environment=env, unpinned_packages=[dict(package=k, pinned=v, found=f) for k, v, f in diffs],
+        scipy=scipy_rec,
         inputs=dict(**inputs, files_verified=len(hash_rows), originals=len(ids), copies_ok=n_ok,
                     unlisted_files=0, check="SHA-256 of every PNG recomputed against the step-2 manifests"),
         hash_parameters=dict(library="ImageHash", calls=HASH_CALLS, bits=N_BITS,

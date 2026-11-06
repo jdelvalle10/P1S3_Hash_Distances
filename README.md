@@ -116,15 +116,20 @@ If any check fails, the run stops and writes nothing.
     python3 -m unittest discover -s tests -v                        # self-test, no network
     python3 hash_distances.py --in ~/DVA_copies --out ~/DVA_hashes  # IN = step-2 output folder
 
-Options: `--workers` (default: all cores; the output does not depend on it), `--allow-unpinned` (run
+Options: `--workers` (default: all cores; the output does not depend on it), `--expect-scipy VERSION`
+(stop unless the installed SciPy is exactly this version; see below), `--allow-unpinned` (run
 with package versions other than the protocol pins; the differences are recorded in `run_metadata.json`.
 For tests only: the experiment runs in the reference environment). OUT must be a new or empty folder.
 
 ## Reproducibility
 
 Pinned versions: numpy 2.5.3, Pillow 12.3.0, ImageHash 4.3.2, PyWavelets 1.8.0; the script refuses to run
-with others unless `--allow-unpinned` is given. ImageHash's pHash needs SciPy, which the protocol does not
-pin yet; its version is recorded in `run_metadata.json`. Resizing inside ImageHash uses Pillow's Lanczos
+with others unless `--allow-unpinned` is given. ImageHash's pHash needs SciPy (`scipy.fftpack.dct`).
+SciPy is **detected at run time**: the script prints it and records it in `run_metadata.json` (`scipy`:
+detected, expected, matches). The computation never changes with the version; only the check adapts. Without
+`--expect-scipy` the detected version is accepted (a pilot, or the first run on a machine); with
+`--expect-scipy` the run stops on any other version, so a later run can be tied to the version an earlier
+run recorded. Resizing inside ImageHash uses Pillow's Lanczos
 filter, so exact hashes are guaranteed only in the same software environment.
 
 ## Licence

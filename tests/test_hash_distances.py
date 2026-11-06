@@ -101,6 +101,13 @@ class Units(unittest.TestCase):
         self.assertEqual(hd.derive_seed(20261029, "partition"), 1267097490298986660)
         self.assertEqual(hd.derive_seed(20261029, "reference_pairs", "calibration"), 18204712903779422979)
 
+    def test_check_scipy(self):
+        self.assertEqual(hd.check_scipy("1.18.1"), dict(detected="1.18.1", expected=None, matches=None))
+        self.assertTrue(hd.check_scipy("1.18.1", "1.18.1")["matches"])
+        self.assertFalse(hd.check_scipy("1.18.1", "1.17.0")["matches"])
+        with self.assertRaises(SystemExit):
+            hd.check_scipy(None)
+
     def test_version_check(self):
         self.assertEqual(hd.check_versions(dict(hd.PINNED)), [])
         found = dict(hd.PINNED, ImageHash="4.3.1")
@@ -229,6 +236,26 @@ class EndToEnd(unittest.TestCase):
         p, _ = self.broken(mutate)
         self.assertNotEqual(p.returncode, 0)
         self.assertIn("half differs", p.stderr)
+
+    def test_scipy_detected_and_recorded(self):
+        import scipy
+        rec = self.meta["scipy"]
+        self.assertEqual(rec["detected"], scipy.__version__)
+        self.assertIsNone(rec["expected"])
+        self.assertEqual(self.meta["environment"]["packages"]["scipy"], scipy.__version__)
+
+    def test_expect_scipy(self):
+        import scipy
+        if hd.check_versions(hd.package_versions()):        # outside the pinned environment the pin check stops first
+            self.skipTest("not in the pinned environment")
+        out = Path(tempfile.mkdtemp(dir=self.tmp.name)) / "out"
+        p = run("--in", self.s2, "--out", out, "--workers", "2", "--expect-scipy", "0.0.1", check=False)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("--expect-scipy", p.stderr)
+        self.assertFalse(out.exists())
+        run("--in", self.s2, "--out", out, "--workers", "2", "--expect-scipy", scipy.__version__)
+        m = json.loads((out / "run_metadata.json").read_text())
+        self.assertEqual(m["scipy"], dict(detected=scipy.__version__, expected=scipy.__version__, matches=True))
 
     def test_refuses_non_empty_output(self):
         p = run("--in", self.s2, "--out", self.a, *UNPINNED, check=False)
