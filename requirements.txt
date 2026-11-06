@@ -1,0 +1,8 @@
+# Exact versions pinned by the protocol (section 8). Tested on CPython 3.12.
+numpy==2.5.3
+pillow==12.3.0
+ImageHash==4.3.2
+PyWavelets==1.8.0
+# SciPy is required by ImageHash (pHash) but not yet pinned by the protocol: its version is recorded
+# in run_metadata.json. Pin it here once the reference environment version is approved.
+scipy

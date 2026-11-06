@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+*.part
+# generated data never belongs in the repository
+hashes.csv
+distances.csv
+reference_pairs.csv
+cell_counts.csv
+run_metadata.json
