@@ -3,6 +3,6 @@ numpy==2.5.3
 pillow==12.3.0
 ImageHash==4.3.2
 PyWavelets==1.8.0
-# SciPy is required by ImageHash (pHash). The script detects and records its version at run time
-# (see README, --expect-scipy). Pin it here once the reference environment version is approved.
-scipy
+# SciPy is required by ImageHash (pHash). Version from the step-3 pilot (MacBook Pro, Python 3.12.16, arm64,
+# 6 Nov 2026). The script also detects and records it at run time (see README, --expect-scipy).
+scipy==1.18.1
