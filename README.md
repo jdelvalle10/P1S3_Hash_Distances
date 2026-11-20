@@ -123,7 +123,8 @@ For tests only: the experiment runs in the reference environment). OUT must be a
 
 ## Reproducibility
 
-Pinned versions: numpy 2.5.3, Pillow 12.3.0, ImageHash 4.3.2, PyWavelets 1.8.0; the script refuses to run
+Pinned versions: numpy 2.5.3, Pillow 12.3.0, ImageHash 4.3.2, PyWavelets 1.8.0 (and SciPy 1.18.1 in
+`requirements.txt`, taken from the step-3 pilot environment); the script refuses to run
 with others unless `--allow-unpinned` is given. ImageHash's pHash needs SciPy (`scipy.fftpack.dct`).
 SciPy is **detected at run time**: the script prints it and records it in `run_metadata.json` (`scipy`:
 detected, expected, matches). The computation never changes with the version; only the check adapts. Without
